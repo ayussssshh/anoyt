@@ -14,13 +14,7 @@ export function initializeWebSocket(server: Server) {
     startHeartbeat(wss)
 
     wss.on("connection", (socket, request) => {
-
-        const url = new URL(request.url!, "http://localhost");
-
-        const roomId = url.searchParams.get("roomId");
-
         handleConnection(socket, request);
-        console.log(roomId);
     });
 
 }

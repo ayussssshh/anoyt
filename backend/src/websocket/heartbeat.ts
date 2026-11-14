@@ -1,12 +1,14 @@
 // websocket/heartbeat.ts
 import { WebSocketServer, WebSocket } from "ws";
 
-const INTERVAL_MS = 30_000;
+const INTERVAL_MS = 3000;
 const alive = new WeakMap<WebSocket, boolean>();
 
 export function trackHeartbeat(socket: WebSocket) {
   alive.set(socket, true);
-  socket.on("pong", () => alive.set(socket, true));
+  socket.on("pong", () => {
+    alive.set(socket, true)
+  });
 }
 
 export function startHeartbeat(wss: WebSocketServer) {
@@ -21,5 +23,7 @@ export function startHeartbeat(wss: WebSocketServer) {
     }
   }, INTERVAL_MS);
 
-  wss.on("close", () => clearInterval(timer));
+  wss.on("close", () => {
+    clearInterval(timer)
+  })
 }

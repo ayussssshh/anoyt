@@ -110,7 +110,7 @@ export type WelcomeMessage = {
 // A chat message, broadcast to everyone in the room (including the sender).
 export type BroadcastMessage = {
   type: typeof ServerMessageType.Message;
-  id: string; // unique per message (React keys, future history/dedupe)
+  userId: string; // unique per message (React keys, future history/dedupe)
   username: string;
   message: string;
   timestamp: number; // milliseconds since epoch, set by the SERVER
