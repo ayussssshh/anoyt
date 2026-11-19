@@ -12,7 +12,7 @@ import { useNavigate } from "react-router-dom";
 }
 
 
-  function RoomCard({ name, description, room_id, is_private, members }: RoomCardProps) {
+  function RoomCard({ name, description, room_id, members }: RoomCardProps) {
 
     const navigate = useNavigate()
 

@@ -22,7 +22,7 @@ export default function Home() {
 
     async function createUser() {
 
-        const response = await api.get("Users/create-temp-session")
+        await api.get("Users/create-temp-session")
 
         // check the response for failure case
 
