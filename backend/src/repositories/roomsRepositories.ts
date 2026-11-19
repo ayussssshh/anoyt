@@ -47,3 +47,12 @@ export async function joinRoom(userID: string, roomId: number, is_moderator:bool
     }
     
 }
+
+
+
+export async function queryRoom(roomId: string) {
+    
+    const result = await pool.query(`SELECT * FROM room_list WHERE is_private = FALSE AND room_id = $1`,[roomId])
+    return result.rows[0].room_id ?? null
+    
+}

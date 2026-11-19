@@ -38,6 +38,15 @@ export const CloseCode = {
   TooManyConnections: 4003, // user is over MAX_CONNECTIONS_PER_USER
 } as const;
 
+export const CLOSE_REASION : Record<CloseCode, string> = {
+  1000: "Normal closure",
+  1001: "Going away",
+  1008: "Unauthorized",
+  1011: "Server error",
+  4002: "Room not found",
+  4003: "Too many connections",
+}
+
 // Same name for the type: CloseCode is "any one of the numbers above".
 export type CloseCode = (typeof CloseCode)[keyof typeof CloseCode];
 

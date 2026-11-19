@@ -4,11 +4,10 @@ import { trackHeartbeat } from "./heartbeat.js";
 import { WSauth } from "./auth.js";
 import { setUsername } from "../module/CreateUserName.js";
 import { broadcastService } from "./broadcastService.js";
-import { isClientChatMessage } from "./validators.js";
-import { parseClientMessage } from "./protocol.js";
-import { ParseResult } from "./protocol.js";
+import { parseClientMessage, ParseResult } from "./protocol.js";
 import logger from "../lib/logger.js";
-import { error } from "node:console";
+import { WSreject, WSsendError } from "./reject.js";
+import { queryRoom } from "../repositories/roomsRepositories.js";
 
 
 
@@ -28,12 +27,19 @@ export const RoomMapConnection = new Map<RoomId, Set<Connection>>()
 
 export async function handleConnection(socket: WebSocket, request: IncomingMessage) {
 
+
+    socket.on("error", (error) => {
+        logger.error({ error }, "socket error")
+    })
+
+
+
     const userId: string = WSauth(request) ?? ""
 
     if (!userId) {
-        console.log("auth error")
-        return 
-    } // do systamatic response for invalid cred
+        WSreject(socket, 1008)
+        return
+    }
 
     const username: string = await setUsername(userId) ?? ""
 
@@ -41,30 +47,47 @@ export async function handleConnection(socket: WebSocket, request: IncomingMessa
 
     const roomId: RoomId = url.searchParams.get("roomId") ?? "";
 
+    if (roomId !== await queryRoom(roomId)) {
+        WSreject(socket, 4002)
+        return
+    }
+
+    if (socket.readyState !== WebSocket.OPEN) return
+
     trackHeartbeat(socket)
 
-    const connection: Connection= {roomId, userId, username, socket}
+    const connection: Connection = { roomId, userId, username, socket }
 
     setRoomMapConnection(connection)
-    
+
+    logger.info({
+        roomId:connection.roomId,
+        userId:connection.userId,
+        username:connection.username
+    }, "Connected")
+
     socket.on("message", (rawData) => {
 
         const data: ParseResult = parseClientMessage(rawData.toString())
 
         if (!data.ok) {
-            return //do a better error handiling
+            logger.warn({ code: data.code, raw: rawData.toString().slice(0, 200) }, "bad client message")
+            WSsendError(socket, data.code)
+            return
         }
 
         broadcastService(connection, data.msg)
     })
 
     socket.on("close", () => {
+        logger.info({
+            roomId: connection.roomId,
+            userId: connection.userId,
+            username: connection.username
+        }, "Closed")
         removeRoomMapConnection(connection, roomId)
     })
 
-    socket.on("error", () => {
-        logger.error(error)
-    })
 }
 
 

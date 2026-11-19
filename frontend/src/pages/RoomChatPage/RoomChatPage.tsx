@@ -23,70 +23,71 @@ export default function RoomChatPage() {
     // Called when the user presses Send.
     // The message is NOT added locally: the server broadcasts it back to
     // every client (including the sender), and onmessage adds it.
-    
+
     function handleSend(text: string) {
 
-    const socket = socketRef.current;
+        const socket = socketRef.current;
 
-    if (!socket || socket.readyState !== WebSocket.OPEN) return;
+        if (!socket || socket.readyState !== WebSocket.OPEN) return;
 
-    const msg: Message = {
-        type: "MESSAGE",
-        username: "me",
-        message: text,
-        timestamp: Date.now(),
-    };
+        const msg: Message = {
+            type: "MESSAGE",
+            username: "me",
+            message: text,
+            timestamp: Date.now(),
+        };
 
-    socket.send(JSON.stringify(msg));
-}
+        socket.send(JSON.stringify(msg));
+    }
 
     // Open the websocket connection (port 3000) and close it on unmount.
     useEffect(() => {
 
-    if (!room_id) return;
+        if (!room_id) return;
 
-    const socket = new WebSocket(`ws://localhost:3000/room/?roomId=${encodeURIComponent(room_id)}`);
+        const proto = location.protocol === "https:" ? "wss" : "ws";
+        const socket = new WebSocket(`${proto}://${location.host}/ws?roomId=${encodeURIComponent(room_id)}`);
 
-    socketRef.current = socket;
+        socketRef.current = socket;
 
-    socket.onopen = () => {
+        // socket.onopen = () => {
 
-        console.log("WebSocket connected");
+        //     console.log("WebSocket connected");
 
-        socket.send(JSON.stringify({
-            type: "SOCKET_CONNECTION",
-            roomId: room_id
-        }));
-    };
+        //     socket.send(JSON.stringify({
+        //         type: "SOCKET_CONNECTION",
+        //         roomId: room_id
+        //     }));
+        // };
 
-    socket.onmessage = (event) => {
+        socket.onmessage = (event) => {
 
-        try {
-            const msg: Message = JSON.parse(event.data);
+            try {
+                const msg: Message = JSON.parse(event.data);
 
-            if (msg.type === "MESSAGE") {
-                setMessages(prev => [...prev, msg]);
+                if (msg.type === "MESSAGE") {
+                    setMessages(prev => [...prev, msg]);
+                }
+
+            } catch {
+                console.error("Bad message:", event.data);
             }
+        };
 
-        } catch {
-            console.error("Bad message:", event.data);
-        }
-    };
+        socket.onclose = () => {
+            console.log("WebSocket disconnected");
+        };
 
-    socket.onclose = () => {
-        console.log("WebSocket disconnected");
-    };
+        socket.onerror = (error) => {
+            console.error("WebSocket error:", error);
+        };
 
-    socket.onerror = (error) => {
-        console.error("WebSocket error:", error);
-    };
+        return () => {
+            socketRef.current = null;
+            socket.close();
+        };
 
-    return () => {
-        socketRef.current = null;
-        socket.close();
-    };
-
-}, [room_id]);
+    }, [room_id]);
 
     // Keep the view scrolled to the newest message.
     useEffect(() => {
@@ -130,7 +131,7 @@ export default function RoomChatPage() {
     return (
         <div className="room-chat-page">
             <RoomTopBar roomName="Room1" activeUser={18} />
-            
+
             <main className="chat-messages" ref={listRef}>
                 {messages.length === 0 && (
                     <p className="chat-empty">No messages yet. Say something.</p>

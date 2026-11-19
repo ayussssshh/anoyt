@@ -11,7 +11,7 @@ export default function TopNavBar(){
         <div
         className="topnavbar"
         >
-            <AnoytLogo />
+            <AnoytLogo height={60}/>
         </div>
         
     )

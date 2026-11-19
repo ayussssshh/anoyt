@@ -5,7 +5,7 @@ import cors from "cors"
 import cookieParser from "cookie-parser";
 
 
-import createUser_Router from "./routes/createUser_Router.js";
+import User_Router from "./routes/User_Router.js";
 import rooms_Router from "./routes/rooms_Router.js"
 
 
@@ -18,7 +18,7 @@ export function buildApp() {
 
     app.use(
         cors({
-            origin: "http://localhost:5173",
+            origin: process.env.CORS_ORIGIN ?? "http://localhost:5173",
             credentials: true
         })
     );
@@ -28,7 +28,7 @@ export function buildApp() {
     //         logger
     //     })
     // )
-    app.use("/api/create-temp-session", createUser_Router)
+    app.use("/api/Users", User_Router)
     app.use("/api/rooms", rooms_Router)
 
     return app;

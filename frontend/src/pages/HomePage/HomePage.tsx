@@ -1,6 +1,7 @@
 import Header from "./../../components/Header/Header";
 import "./HomePage.css";
 import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 import { api } from "../../modules/Apis";
 
 
@@ -12,17 +13,30 @@ export default function Home() {
 
     const navigate = useNavigate()
 
+    useEffect(()=>{
+        checkUser();
+    })
+
     
     // get started function for navigeting the react and creating the user
 
     async function createUser() {
 
-        const response = await api.get("/create-temp-session")
+        const response = await api.get("Users/create-temp-session")
 
         // check the response for failure case
 
         navigate('/room')
 
+    }
+
+    async function checkUser() {
+
+        const response = await api.get("Users/check-temp-session")
+
+        if (response.status == 200) {
+            navigate('/room')
+        }
     }
 
 
