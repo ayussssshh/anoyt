@@ -20,11 +20,11 @@ const createUser = async (req: Request, res: Response) => {
     // if (userCredential == null) throw an error
 
     res.cookie('userCredential', userCredential, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 1000 * 60 * 60 * 24
-    })
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    maxAge: 1000 * 60 * 60 * 24
+})
 
     await send_response(res, true, "Temporary session active successfully", 200)
 
