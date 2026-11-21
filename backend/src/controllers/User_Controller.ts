@@ -22,7 +22,7 @@ const createUser = async (req: Request, res: Response) => {
     res.cookie('userCredential', userCredential, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+        sameSite:"lax",
         maxAge: 1000 * 60 * 60 * 24
     })
 

@@ -24,6 +24,12 @@ export function buildApp() {
     app.use("/api/Users", User_Router);
     app.use("/api/rooms", rooms_Router);
 
+
+    // api for keeping the server alive
+    app.get("/api/ping", (_req, res) => {
+        res.status(200).send("ok");
+    });
+
     // Unknown /api paths return JSON, not the React page.
     app.use("/api", (_req, res) => {
         res.status(404).json({ success: false, massage: "Not found", data: null });

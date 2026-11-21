@@ -1,10 +1,13 @@
 # anoyt
 
-## Product Definition — v0.1
+## Product Definition — v0.2
 
-**Status:** Draft
-**Version:** 0.1
-**Purpose:** Establish the product's identity, core philosophy, fundamental entities, and boundaries before implementation.
+**Status:** Draft, partly implemented
+**Application version:** v1.0.0, deployed on Render, still needs polishing (this is the version of the app, separate from this document's version)
+**Version:** 0.2
+**Purpose:** Establish the product's identity, core philosophy, fundamental entities, and boundaries, and record which decisions the implementation has already made.
+
+> **How to read this document.** The product definition (sections 1–13) is unchanged in intent. Blocks marked **Implementation status** describe what the code does today. Where the code made a decision that was previously open, section 17 says so explicitly. Anything not marked is still a design intention.
 
 ---
 
@@ -59,7 +62,7 @@ This identity is temporary rather than a permanent account.
 
 The platform should not maintain a permanent social identity for a participant merely because they previously visited the site.
 
-The exact lifecycle of a participant identity remains to be formally defined.
+**Implementation status.** Pressing "Get Started" calls `GET /api/Users/create-temp-session`. The server creates a random participant ID and sets a signed cookie, `userCredential`. The first time that participant opens a room, the server generates a random 8-character username and stores the pair `(user_id, username)` in the `anonymous_users` table. Nothing else about the participant is stored.
 
 ---
 
@@ -93,6 +96,8 @@ The system should avoid exposing unnecessary information that could allow partic
 
 This does not mean the platform can guarantee that participants can never identify one another. Participants may voluntarily reveal information through their messages or behavior.
 
+**Implementation status.** Messages go from a participant's socket to the server, which broadcasts them to every socket in the room. The broadcast contains a username, a participant ID, the text, and a server timestamp. It contains no network information. Note that the broadcast currently includes the sender's internal participant ID (`userId`); see the open item in section 17.
+
 ---
 
 ## 3. Fundamental Entities
@@ -112,6 +117,8 @@ Message
 ```
 
 These relationships are more important than any particular database implementation.
+
+**Implementation status.** In the database, a participant is a row in `anonymous_users`, a conversation (called a *room* in the code) is a row in `room_list`, and membership is a row in `room_members`. There is no `messages` table yet; messages exist only in transit (see section 10).
 
 ---
 
@@ -162,6 +169,8 @@ Anonymous Fox
 
 The exact generation and naming system is intentionally deferred.
 
+**Implementation status.** The internal identity is a random 128-bit value (32 hex characters). The human-facing name is currently a random 8-character alphanumeric string, not a word-based name like "Anonymous Fox". A friendlier naming scheme is still open.
+
 ---
 
 ## 5. Participant Identity and Network Identity
@@ -186,7 +195,7 @@ Therefore:
 
 > Every active participant should receive a distinct temporary application identity.
 
-The exact mechanism used to create, maintain, reconnect, and expire that identity will be decided during technical design.
+**Implementation status.** The application identity is the signed cookie described in 2.2. The credential is `participantId.issuedAt.expiresAt.signature`, signed with HMAC-SHA256 using a server secret (`ANON_ID_SECRET`), so it cannot be forged or altered. The server does not store IP addresses.
 
 ---
 
@@ -212,21 +221,17 @@ Temporary identity eventually expires
 
 The system should not assume that a participant who returns later is necessarily the same participant.
 
+**Implementation status.**
+
+* A session is the lifetime of the `userCredential` cookie.
+* The signed credential itself is valid for 30 days, but the cookie is set with a 24-hour `maxAge`. In practice the browser discards it after 24 hours. These two numbers should be aligned deliberately.
+* The home page checks for an existing valid session (`GET /api/Users/check-temp-session`) and skips straight to the room list if one exists.
+* Closing a tab or losing a connection does not end the session. Reopening within the cookie lifetime keeps the same identity and username.
+* A returning browser with a valid cookie *is* treated as the same participant, which is a deliberate simplification.
+
 ### Decisions still required
 
-The following must be formally decided later:
-
-* What exactly constitutes a session?
-* What happens when a browser tab closes?
-* What happens when a connection temporarily drops?
-* Can a participant reconnect and retain their identity?
-* How long can a disconnected participant remain recoverable?
-* Can multiple tabs represent the same participant?
-* Can one participant have multiple simultaneous connections?
-* What happens when a device changes network?
-* When exactly is a participant considered permanently gone?
-
-These are important because they affect both the product semantics and technical architecture.
+See section 17 for the current status of each question.
 
 ---
 
@@ -245,7 +250,7 @@ A conversation may contain:
 * messages
 * lifecycle state
 
-The exact fields are not yet finalized.
+**Implementation status.** A room has a name (max 50 characters in the form), a description (max 300), and a public/private flag. Tags, lifecycle state, and expiry are not implemented. The API exposes the room ID in a base-36 uppercase form (for example `1A`), and the same form appears in the page URL `/room/:room_id`.
 
 ---
 
@@ -270,6 +275,8 @@ Possible future permissions include:
 
 These must be explicitly decided before implementation.
 
+**Implementation status.** Any participant with a valid cookie can create a room (`POST /api/rooms/room-create`). The creator is recorded in `room_members` with `is_moderator = true`. No moderator action is implemented yet, so the flag currently has no effect. See `Room_Creation_Public___Private_Rooms.md`.
+
 ---
 
 ## 9. Conversation Membership
@@ -289,6 +296,8 @@ Anonymous Fox
 Participation in one conversation should not require the participant to leave another.
 
 A participant's identity may or may not remain consistent across conversations. This is currently undecided and requires further discussion.
+
+**Implementation status.** The username is stored per participant, not per room, so a participant has the **same name in every conversation**, and in every browser tab. Each WebSocket connection belongs to exactly one room, so several tabs can sit in different rooms. A participant is not currently added to `room_members` when they open a room; only the creator is.
 
 ---
 
@@ -326,6 +335,8 @@ The current rule is:
 
 The lifetime of a conversation has not yet been defined.
 
+**Implementation status.** Messages are **not stored**. The server broadcasts each message to the sockets currently in the room and forgets it. A participant who joins later sees an empty room, and a page refresh clears the visible history. The rule above describes the intended behavior once message storage is added; until then messages are ephemeral.
+
 ---
 
 # 11. Conversation Discovery
@@ -361,6 +372,17 @@ Allow the current participant to start a new conversation.
 The exact ranking algorithm is intentionally deferred.
 
 The initial version should not depend on sophisticated recommendation or machine-learning systems.
+
+**Implementation status.**
+
+```text
+/              Home: introduction and "Get Started" (creates or checks the session)
+/room          Room list: all public rooms, plus a "Create Room" button
+/create-room   Form: name, description, public/private
+/room/:room_id Chat room
+```
+
+The room list shows every public room in the order the database returns them. There is no ranking, search, tags, or live activity signal. The "online" count on each card and in the room's top bar is not yet backed by real data.
 
 ---
 
@@ -419,33 +441,38 @@ No technically observable network information
 
 A stronger server-anonymity model may be considered later.
 
+**Implementation note.** The hosting providers in front of the app (Render and Neon) can observe network information as part of normal operation. The application itself does not store it.
+
 ---
 
 # 14. Initial Technical Scope
 
-The first implementation will use:
+The first implementation uses:
 
 ### Frontend
 
 * TypeScript
-* React
-* Vite
+* React, Vite, `react-router-dom`, `axios`
 
 ### Backend
 
 * TypeScript
-* Express
+* Express 5, `ws`, `pino`
 
 ### Database
 
-* PostgreSQL
+* PostgreSQL (hosted on Neon)
 
 ### Communication
 
-* HTTP for conventional application operations
-* Realtime communication mechanism to be formally selected during architecture design
+* HTTP (JSON, under `/api`) for conventional application operations: session creation, room list, room creation
+* **WebSocket** for realtime chat, one connection per tab, one room per connection. See `WEBSOCKET_ARCHITECTURE.md`.
 
-The exact infrastructure, deployment strategy, scaling model, and hosting configuration are intentionally deferred.
+### Hosting
+
+* Frontend and backend both run on Render's free tier, as one web service. Express serves the built frontend, the `/api` routes, and the WebSocket from a single origin, which keeps the identity cookie first-party. The database is on Neon. The README has the full picture.
+
+Scaling beyond a single server process is intentionally deferred. Realtime state lives in memory.
 
 ---
 
@@ -509,56 +536,62 @@ These may be reconsidered later, but should not influence the initial architectu
 
 # 17. Important Open Decisions
 
-The following questions must be resolved before the corresponding implementation begins.
+Legend: **[decided]** the implementation has settled it, **[partial]** partly settled, **[open]** still undecided.
 
 ## Participant
 
-1. What exactly defines a participant session?
-2. How is a temporary participant identity generated?
-3. Can a participant reconnect?
-4. How long does a disconnected identity remain valid?
-5. Can multiple browser tabs share one identity?
-6. Can one participant have multiple simultaneous connections?
-7. Does a participant have the same anonymous name in every conversation?
-8. What information, if any, is retained after a session ends?
+1. What exactly defines a participant session? **[decided]** The lifetime of the `userCredential` cookie (see 6 for the 24 h / 30 day mismatch to resolve).
+2. How is a temporary participant identity generated? **[decided]** Random 128-bit ID, signed with HMAC-SHA256, delivered as a cookie.
+3. Can a participant reconnect? **[decided]** Yes, while the cookie is valid. Reconnecting keeps the same ID and username.
+4. How long does a disconnected identity remain valid? **[partial]** Until the cookie expires. The server keeps no per-connection state after a socket closes.
+5. Can multiple browser tabs share one identity? **[decided]** Yes.
+6. Can one participant have multiple simultaneous connections? **[decided]** Yes. A per-user cap of 5 is specified but not enforced yet.
+7. Does a participant have the same anonymous name in every conversation? **[decided]** Yes.
+8. What information, if any, is retained after a session ends? **[partial]** The `anonymous_users` row (`user_id`, `username`) is kept indefinitely. There is no cleanup job. Whether that is acceptable for a "temporary" identity is **[open]**.
 
 ## Conversations
 
-9. What exactly makes a conversation active?
-10. When is a conversation considered inactive?
-11. When does a conversation expire?
-12. Does an empty conversation remain available?
-13. Can conversations be reopened?
-14. Can any participant delete/close a conversation?
-15. Does the creator have special privileges?
-16. Can participants be removed or muted?
-17. Can a participant join every conversation?
+9. What exactly makes a conversation active? **[open]**
+10. When is a conversation considered inactive? **[open]**
+11. When does a conversation expire? **[open]** Rooms currently never expire.
+12. Does an empty conversation remain available? **[decided]** Yes, the database row stays. (The in-memory set of connections is dropped when the last socket leaves.)
+13. Can conversations be reopened? **[open]**
+14. Can any participant delete/close a conversation? **[open]** Not implemented.
+15. Does the creator have special privileges? **[partial]** The creator is stored as a moderator, but no privilege is enforced.
+16. Can participants be removed or muted? **[open]** Not implemented.
+17. Can a participant join every conversation? **[partial]** Every public room is joinable. Private-room access is not built.
 
 ## Messages
 
-18. Are messages permanently retained for the lifetime of a conversation?
-19. Can messages be edited?
-20. Can participants delete their own messages?
-21. Can moderators delete messages?
-22. What happens to messages when a conversation expires?
-23. What ordering guarantee do messages have?
+18. Are messages permanently retained for the lifetime of a conversation? **[open]** Currently not stored at all (see 10).
+19. Can messages be edited? **[open]**
+20. Can participants delete their own messages? **[open]**
+21. Can moderators delete messages? **[open]**
+22. What happens to messages when a conversation expires? **[open]**
+23. What ordering guarantee do messages have? **[partial]** Messages carry a server-assigned timestamp and are delivered in the order the server processes them, within one server process.
 
 ## Discovery
 
-24. What exactly appears on the homepage?
-25. How are active conversations ranked?
-26. How does search work?
-27. How are tags defined?
-28. Can a newly created conversation be immediately discoverable?
-29. What happens to conversations with no participants?
+24. What exactly appears on the homepage? **[decided for now]** An introduction and a Get Started button. Discovery lives on `/room`.
+25. How are active conversations ranked? **[open]**
+26. How does search work? **[open]** Not implemented.
+27. How are tags defined? **[open]** Not implemented.
+28. Can a newly created conversation be immediately discoverable? **[decided]** Yes, if public.
+29. What happens to conversations with no participants? **[open]** They stay listed.
 
 ## Moderation / Abuse
 
-30. How can abusive participants be handled without permanent identities?
-31. What can be rate-limited?
-32. Who can moderate a conversation?
-33. What happens when someone repeatedly reconnects to evade restrictions?
-34. What information can the system temporarily retain for abuse prevention?
+30. How can abusive participants be handled without permanent identities? **[open]**
+31. What can be rate-limited? **[open]** An error code for rate limiting exists in the protocol; no limiter is implemented.
+32. Who can moderate a conversation? **[open]**
+33. What happens when someone repeatedly reconnects to evade restrictions? **[open]** Clearing cookies yields a fresh identity.
+34. What information can the system temporarily retain for abuse prevention? **[open]**
+
+## New questions raised by the implementation
+
+35. Should the broadcast include the sender's internal participant ID? It is currently sent with every message, and it is stable across rooms, so other participants could link one anonymous person's activity across conversations. A per-room or per-message identifier may be preferable.
+36. Should the 24 h cookie lifetime and the 30-day credential expiry be aligned?
+37. Should the `anonymous_users` table be pruned?
 
 These questions should be answered deliberately rather than implicitly through implementation.
 
@@ -600,7 +633,7 @@ This document is intentionally incomplete.
 
 An unresolved decision is preferable to an undocumented assumption.
 
-Before implementation begins, the open decisions should be reviewed and either:
+Before implementation of a feature begins, the related open decisions should be reviewed and either:
 
 1. resolved in this document,
 2. moved into a technical/design decision document, or
