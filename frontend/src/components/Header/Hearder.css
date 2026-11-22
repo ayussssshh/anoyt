@@ -1,3 +1,21 @@
-.topnavbar{
+.topnavbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--space-lg);
     background-color: var(--bg-secondary);
+}
+
+.end-session-btn {
+    background: var(--accent);
+    color: var(--text-primary);
+    border: none;
+    border-radius: var(--radius-md);
+    padding: var(--space-sm) var(--space-md);
+}
+
+.end-session-btn:hover { background: var(--accent-hover); }
+
+@media (max-width: 480px) {
+    .end-session-btn { padding: var(--space-xs) var(--space-sm); font-size: 0.85rem; }
 }
