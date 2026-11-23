@@ -19,7 +19,7 @@ function RoomCard({ name, description, room_id, members }: RoomCardProps) {
   const [open ,setOpen] = useState(false)
 
   const connectToRoom = () => {
-    navigate(`/room/${room_id}`)
+    navigate(`/room/${room_id}`, {state: {roomName: name}})
   };
 
   return (
