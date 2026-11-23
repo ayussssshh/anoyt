@@ -8,6 +8,7 @@ import { parseClientMessage, ParseResult } from "./protocol.js";
 import logger from "../lib/logger.js";
 import { WSreject, WSsendError } from "./reject.js";
 import { queryRoom } from "../repositories/roomsRepositories.js";
+import { B10toB32, B32toB10 } from "../lib/baseConversion.js";
 
 
 
@@ -47,7 +48,7 @@ export async function handleConnection(socket: WebSocket, request: IncomingMessa
 
     const roomId: RoomId = url.searchParams.get("roomId") ?? "";
 
-    if (roomId !== await queryRoom(roomId)) {
+    if (B32toB10(roomId) !== await queryRoom(roomId)) {
         WSreject(socket, 4002)
         return
     }

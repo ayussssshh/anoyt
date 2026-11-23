@@ -1,5 +1,6 @@
 import { pool } from "../config/database.js";
 import logger from "../lib/logger.js";
+import { B32toB10 } from "../lib/baseConversion.js";
 
 
 export async function qureyRoomList() {
@@ -51,8 +52,27 @@ export async function joinRoom(userID: string, roomId: number, is_moderator:bool
 
 
 export async function queryRoom(roomId: string) {
+
+    const room_id = B32toB10(roomId)
     
-    const result = await pool.query(`SELECT * FROM room_list WHERE is_private = FALSE AND room_id = $1`,[roomId])
+    const result = await pool.query(`SELECT * FROM room_list WHERE is_private = FALSE AND room_id = $1`,[room_id])
+
+    console.log(result.rows[0].room_id)
     return result.rows[0].room_id ?? null
+    
+}
+
+
+export async function queryRoomName(roomId: string) {
+
+    const room_id = B32toB10(roomId)
+
+    console.log(room_id)
+    
+    const result = await pool.query(`SELECT * FROM room_list WHERE is_private = FALSE AND room_id = $1`,[room_id])
+
+    // console.log(result)
+
+    return result.rows[0].name ?? null
     
 }

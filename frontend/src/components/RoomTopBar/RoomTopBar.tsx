@@ -5,16 +5,18 @@ import "./RoomTopBar.css"
 interface RoomTopBarProps {
   roomName: string;
   activeUser: number;
+  onLeave: () => void;
 }
 
 export default function RoomTopBar({
   roomName,
   activeUser,
+  onLeave
 }: RoomTopBarProps) {
   return (
     <div className="room-top-bar">
       <h4>{roomName}</h4>
-      <button type="button" className="leave-btn" aria-label="Leave room">
+      <button type="button" className="leave-btn" aria-label="Leave room" onClick={onLeave}>
         <svg
           className="leave-btn-icon"
           viewBox="0 0 24 24"

@@ -4,8 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import RoomTopBar from "../../components/RoomTopBar/RoomTopBar";
 import SendMsg from "../../components/RoomMsgSend/RoomMsgSend";
 import ChatMsg from "../../components/ChatMsg/ChatMsg";
-import { useParams } from "react-router-dom";
+import { 
+    useParams,
+    useNavigate,
+    useLocation
+     } from "react-router-dom";
 import "./RoomChatPage.css";
+import { api } from "../../modules/Apis";
+import axios from "axios";
+
 
 interface Message {
     type: "MESSAGE";
@@ -19,6 +26,15 @@ export default function RoomChatPage() {
     const listRef = useRef<HTMLElement>(null);
     const socketRef = useRef<WebSocket | null>(null);
     const { room_id } = useParams<{ room_id: string }>()
+
+    const navigate = useNavigate()
+    const Location = useLocation()
+
+    const stateName = (Location.state as { roomName?: string } | null)?.roomName ?? "Room"
+
+    const [roomName, setRoomName] = useState(stateName ?? "")
+
+
 
     // Called when the user presses Send.
     // The message is NOT added locally: the server broadcasts it back to
@@ -39,6 +55,37 @@ export default function RoomChatPage() {
 
         socket.send(JSON.stringify(msg));
     }
+
+
+    // function on handle the close
+
+    function handleLeave(){
+        navigate("/room")
+    }
+
+
+    useEffect(() => {
+    if (!room_id) return;
+
+    const controller = new AbortController();
+
+    async function loadRoomName() {
+        try {
+            const res = await api.get("/rooms/get-room-name", { params: { room_id } })
+
+            setRoomName(res.data.data[0]);
+        } catch (err) {
+            if (axios.isCancel(err)) return; // we aborted it ourselves
+            console.error("Failed to load room name:", err);
+            //navigate("/room");
+        }
+    }
+
+    loadRoomName();
+
+    return () => controller.abort();
+}, [room_id, navigate]);
+
 
     // Open the websocket connection (port 3000) and close it on unmount.
     useEffect(() => {
@@ -130,7 +177,7 @@ export default function RoomChatPage() {
 
     return (
         <div className="room-chat-page">
-            <RoomTopBar roomName="Room1" activeUser={18} />
+            <RoomTopBar roomName={roomName} activeUser={18} onLeave={handleLeave}/>
 
             <main className="chat-messages" ref={listRef}>
                 {messages.length === 0 && (
