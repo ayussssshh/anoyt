@@ -5,7 +5,8 @@ import {
 import { Request, Response } from "express"
 import { send_response } from "../lib/sendResponse.js"
 import { } from "../module/UserIdentification.js"
-import { removeUser, removeUserFromRooms } from "../repositories/usersRepositores.js"
+import { removeUser, removeUserFromRooms, mapUserIdtoUsername } from "../repositories/usersRepositores.js"
+import {generateUsername} from "../module/CreateUserName.js"
 
 
 
@@ -19,17 +20,54 @@ import { removeUser, removeUserFromRooms } from "../repositories/usersRepositore
 
 
 const cookieOptions = {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax" as const,
-    };
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+};
 
 
 
 
 const createUser = async (req: Request, res: Response) => {
 
+    const raw = req.query.username
+
+    console.log(raw)
+
+    let username = typeof raw === "string" ? raw.trim() : "";
+
+    if (username === "") {
+        const userCredential: string = createCredential()
+
+        const userId = userCredential.split(".")[0]
+
+        const R_username = generateUsername()
+
+        if (!(await mapUserIdtoUsername(userId, R_username))) {
+            await send_response(res, false, "Temporary session inactive", 500)
+            return
+        }
+
+        // if (userCredential == null) throw an error
+
+        res.cookie("userCredential", userCredential, {
+            ...cookieOptions,
+            maxAge: 1000 * 60 * 60 * 24 * 400,
+        });
+
+        await send_response(res, true, "Temporary session active successfully", 200)
+
+        return
+    }
+
     const userCredential: string = createCredential()
+
+    const userId = userCredential.split(".")[0]
+
+    if (!(await mapUserIdtoUsername(userId, username))) {
+        await send_response(res, false, "Temporary session inactive", 500)
+        return
+    }
 
     // if (userCredential == null) throw an error
 
@@ -39,6 +77,7 @@ const createUser = async (req: Request, res: Response) => {
     });
 
     await send_response(res, true, "Temporary session active successfully", 200)
+
 
 }
 

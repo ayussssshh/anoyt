@@ -8,6 +8,7 @@ import { parseClientMessage, ParseResult } from "./protocol.js";
 import logger from "../lib/logger.js";
 import { WSreject, WSsendError } from "./reject.js";
 import { queryRoom } from "../repositories/roomsRepositories.js";
+import {getUsernamebyUID} from "../repositories/usersRepositores.js"
 import { B10toB32, B32toB10 } from "../lib/baseConversion.js";
 
 
@@ -42,7 +43,11 @@ export async function handleConnection(socket: WebSocket, request: IncomingMessa
         return
     }
 
-    const username: string = await setUsername(userId) ?? ""
+    const username: string = await getUsernamebyUID(userId) ?? ""
+
+    if(!username){
+        WSreject(socket, 4004)
+    }
 
     const url = new URL(request.url!, "http://localhost");
 

@@ -36,6 +36,7 @@ export const CloseCode = {
   ServerError: 1011, // unexpected server failure
   RoomNotFound: 4002, // roomId missing or no such room
   TooManyConnections: 4003, // user is over MAX_CONNECTIONS_PER_USER
+  UserNotFound: 4004,
 } as const;
 
 export const CLOSE_REASION : Record<CloseCode, string> = {
@@ -45,6 +46,7 @@ export const CLOSE_REASION : Record<CloseCode, string> = {
   1011: "Server error",
   4002: "Room not found",
   4003: "Too many connections",
+  4004: "User not found"
 }
 
 // Same name for the type: CloseCode is "any one of the numbers above".
